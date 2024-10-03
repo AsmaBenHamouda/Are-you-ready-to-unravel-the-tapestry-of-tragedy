@@ -1,0 +1,517 @@
+---
+title: "Êtes-vous prêt à dévoiler la tapisserie de la tragédie ?  "
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+  
+## I/Introduction 
+ **Explorer les Décès par arme à feu aux États-Unis(2006-2020)**
+
+Ce projet explore les complexités de la violence armée aux États-Unis en analysant un ensemble de données complet couvrant la période de 2006 à 2020. Nous examinerons les tendances, les modèles et les facteurs contributifs afin de mieux comprendre ce problème crucial de santé publique
+
+## II/Analyse Globale du Dataframe 
+
+ Ce projet vise à analyser de manière globale un ensemble de données couvrant la violence armée aux États-Unis sur une période de 15 ans, de 2006 à 2020. Les données sont réparties en plusieurs fichiers CSV distincts, un par année, nommés de "guns_2006.csv" à "guns_2020.csv".
+
+Chaque fichier CSV contient des informations détaillées sur des incidents individuels liés aux armes à feu, avec une ligne dédiée à chaque incident. Les colonnes du jeu de données comprennent :
+
+   *   year (année) : Année de l'incident.
+   *   month (mois) : Mois de l'incident.
+   *   intent (intention) : Intention derrière l'incident (homicide, suicide, etc.).
+   *   police (police impliquée) : Indique si la police était impliquée dans l'incident.
+   *   sex (sexe) : Sexe de la victime.
+   *   age (âge) : Âge de la victime.
+   *   race (origine ethnique) : Origine ethnique de la victime.
+   *   hispanic (hispanique) : Indique si la victime est d'origine hispanique.
+   *   place (lieu) : Lieu de l'incident.
+   *   education (éducation) : Niveau d'éducation de la victime.
+
+## III/Découvrirdes données
+
+**les bibliothèques nécessaires**
+```{r}
+library(dplyr)
+library(ggplot2)
+library(plotrix)
+```
+
+**Chargement et Combinaison des Données Annuelles**
+```{r}
+# Chemin vers le répertoire contenant les fichiers CSV
+chemin <- "C:/2BD/Projet/"
+
+# Initialiser un dataframe vide pour stocker les données combinées
+donnees_combinees <- data.frame()
+
+# Boucler à travers chaque année de 2006 à 2020
+for (annee in 2006:2020) {
+    # Construire le chemin du fichier CSV
+    nom_fichier <- paste0(chemin, "guns_", annee, ".csv")
+    
+    # Lire le fichier CSV dans un dataframe temporaire
+    donnees_temporaires <- read.csv(nom_fichier)
+    
+    # Ajouter une colonne pour l'année
+    donnees_temporaires$annee <- annee
+    
+    # Combinez le dataframe temporaire avec le dataframe combiné existant
+    donnees_combinees <- bind_rows(donnees_combinees, donnees_temporaires)
+}
+
+```
+
+**Structure du dataframe combiné**
+```{r}
+str(donnees_combinees)
+```
+**Premières Lignes du Dataframe Combiné**
+```{r}
+head(donnees_combinees)
+```
+
+**Dernières Lignes du Dataframe Combiné**
+
+```{r}
+tail(donnees_combinees)
+```
+**Nombre de Valeurs Uniques par Colonne**
+```{r}
+nombre_valeurs_uniques <- sapply(donnees_combinees, function(col) n_distinct(col))
+print(nombre_valeurs_uniques)
+```
+**Interprétation des Colonnes**
+
+  * *year* :  Il y a 15 années distinctes dans les données, ce qui correspond à la plage de 2006 à 2020.
+  * *month* : Il y a 12 mois distincts, ce qui est conforme à l'année civile standard.
+  * *intent* : Il y a 5 intentions distinctes derrière les incidents, ce qui pourrait inclure des catégories telles que homicide, suicide, accident, etc.
+  * *police* : Il y a 2 valeurs distinctes, indiquant la présence ou l'absence d'implication policière dans chaque incident.
+  * *sex* :  Il y a 2 valeurs distinctes, probablement masculin et féminin.
+  * *age* : Il y a 110 valeurs distinctes, ce qui suggère une grande variabilité dans les âges des victimes
+  * *race*  :  Il y a 5 catégories distinctes pour la race des victimes.
+  * *hispanic* :  Il y a 48 valeurs distinctes, indiquant une diversité ethnique parmi les victimes hispaniques.
+  * *place* : Il y a 11 lieux distincts où les incidents se sont produits
+  * *education*:   Il y a 5 niveaux d'éducation distincts parmi les victimes.
+  * *annee* : la meme colonne de year 
+
+**Supprimer la colonne "annee"**
+```{r}
+donnees_combinees <- select(donnees_combinees, -annee)
+head(donnees_combinees)
+```
+**Forme du Dataframe**
+```{r}
+dim(donnees_combinees)
+```
+**Identification des Valeurs Uniques et  un résumé statistique  pour Chaque Colonne **
+*un résumé statistique*
+```{r}
+summary(donnees_combinees)
+```
+*Les Valeurs Uniques *
+```{r}
+valeurs_uniques <- lapply(donnees_combinees, function(col) unique(col))
+valeurs_uniques
+```
+**Remarque**
+
+
+Après recherche, j'ai découvert que les valeurs dans la colonne "hispanic" sont des codes pour différentes origines hispaniques, tandis que les valeurs spéciales comme 998 et 996 représentent des catégories inconnues. 
+
+
+   --> Nous allons maintenant rendre notre ensemble de données plus lisible en nettoyant notre dataframe
+## VI/Nettoyage des données
+
+
+**la colonne 'hispanic'**
+Remplacer les valeurs 998 et 996 par NA pour indiquer que les données sont manquantes ou non spécifiées
+```{r}
+donnees_combinees$hispanic[donnees_combinees$hispanic %in% c(998, 996)] <- NA
+
+```
+
+**la colonne 'intent'**
+ * Remplacer les valeurs manquantes par "Unknown" pour indiquer que l'intention de l'incident n'est pas spécifiée.
+```{r}
+donnees_combinees$intent[is.na(donnees_combinees$intent)] <- "Unknown"
+```
+**la colonne 'police'**
+  *  Convertir la colonne en facteur pour indiquer la présence ou l'absence d'implication policière.
+```{r}
+donnees_combinees$police <- as.factor(donnees_combinees$police)
+```
+**la colonne 'sex'**
+  *  Convertir les valeurs "M" et "F" en "Male" et "Female" respectivement pour une meilleure lisibilité et compréhension 
+```{r}
+donnees_combinees$sex <- factor(donnees_combinees$sex, levels = c("M", "F"), labels = c("Male", "Female"))
+
+```
+**la colonne 'race'**
+ *Convertir les valeurs en facteur avec des niveaux spécifiques pour assurer la cohérence et la lisibilité des données.
+```{r}
+donnees_combinees$race <- factor(donnees_combinees$race, levels = c("White", "Black", "Hispanic", "Asian/Pacific Islander", "Native American/Native Alaskan"))
+
+```
+ **la colonne 'place'**
+ * Remplacer la catégorie "Other unspecified" par NA pour indiquer que le lieu de l'incident n'est pas spécifié
+```{r}
+donnees_combinees$place[donnees_combinees$place == "Other unspecified"] <- NA
+
+```
+**la colonne 'education'**
+ * Remplacer les valeurs manquantes par "Unknown" pour indiquer que le niveau d'éducation n'est pas spécifié.
+```{r}
+donnees_combinees$education[is.na(donnees_combinees$education)] <- "Unknown"
+
+```
+  **Afficher les premières lignes du dataframe après nettoyage**
+```{r}
+head(donnees_combinees)
+```
+## V/Visualisation des données : 
+
+#1/Analyse univariée: 
+**Par Statistique**
+```{r}
+cat("Tableau des sexes :\n")
+print(table(summary(donnees_combinees$year)))
+cat("---------------------------------------------------------------------------------------\n")
+cat("Tableau des sexes :\n")
+print(table(donnees_combinees$sex))
+cat("---------------------------------------------------------------------------------------\n")
+cat("Tableau des mois :\n")
+print(table(donnees_combinees$month))
+cat("---------------------------------------------------------------------------------------\n")
+
+cat("Tableau des intentions :\n")
+print(table(donnees_combinees$intent))
+cat("---------------------------------------------------------------------------------------\n")
+
+cat("Tableau des races :\n")
+print(table(donnees_combinees$race))
+cat("---------------------------------------------------------------------------------------\n")
+
+cat("Résumé des âges :\n")
+print(summary(donnees_combinees$age))
+cat("---------------------------------------------------------------------------------------\n")
+
+cat("Tableau de la présence de la police :\n")
+print(table(donnees_combinees$police))
+cat("---------------------------------------------------------------------------------------\n")
+
+cat("Tableau des niveaux d'éducation :\n")
+print(table(donnees_combinees$education))
+cat("---------------------------------------------------------------------------------------\n")
+cat("Tableau des hispaniques :\n")
+print(table(donnees_combinees$hispanic))
+cat("---------------------------------------------------------------------------------------\n")
+
+```
+**Par Graphe**
+
+```{r}
+ggplot(donnees_combinees, aes(x = year)) + 
+  geom_bar() +
+  labs(title = "Tendance temporelle des décès par année", x = "Année", y = "Nombre de décès")
+
+```
+
+
+
+
+
+
+```{r}
+# Création de la fenêtre graphique
+par(mfrow = c(1, 2))
+# Diagramme à barres 
+barplot(table(donnees_combinees$sex), col =  c("#ea0200", "#22696e"),
+        xlab = "Sexe", ylab = "Nombre de décès",
+        main = "Répartition des décès par sexe",
+        names.arg = c("Homme", "Femme"),
+        yaxp = c(0, max(table(donnees_combinees$sex)), 5))
+
+# Diagramme circulaire
+q <- levels(factor(donnees_combinees$sex))
+r <- table(factor(donnees_combinees$sex))
+prc <- round((r / nrow(donnees_combinees)) * 100, 2)
+x <- table(donnees_combinees$sex)
+d <- levels(factor(donnees_combinees$sex))
+pie3D(x, explode = 0.1, main = "Pourcentage des décès par sexe", labels = paste(q, "-", prc, "%"))  # Légende du pourcentage
+
+
+```
+
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = factor(month), fill = factor(month))) + 
+  geom_bar() +
+  labs(title = "Répartition des décès par mois", x = "Mois", y = "Nombre de décès") +
+  scale_x_discrete(labels = month.abb)
+
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = intent, fill = intent)) + 
+  geom_bar() +
+  labs(title = "Répartition des décès par intention", x = "Intention", y = "Nombre de décès")
+
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = race, fill = race)) + 
+  geom_bar() +
+  labs(title = "Répartition des décès par race", x = "Race", y = "Nombre de décès")
+
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = age)) + 
+  geom_histogram(binwidth = 5) +
+  labs(title = "Répartition des décès par âge", x = "Âge", y = "Nombre de décès")
+
+```
+
+```{r}
+library(gridExtra)
+# Tracé de la densité de l'âge
+density_plot <- ggplot(donnees_combinees, aes(x = age)) + geom_density(fill = "blue") +
+               labs(title = "Densité de l'âge des victimes", x = "Âge", y = "Densité")
+
+# Tracé de la fonction de répartition empirique
+ecdf_plot <- ggplot(donnees_combinees, aes(x = age)) + stat_ecdf() +
+             labs(title = "Fonction de répartition empirique de \n l'âge", x = "Âge", y = "Probabilité")
+
+# Affichage des deux graphiques côte à côte
+grid.arrange(density_plot, ecdf_plot, ncol = 2)
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = factor(police), fill = factor(police))) + 
+  geom_bar() +
+  labs(title = "Répartition des décès impliquant la police", x = "Implication de la police", y = "Nombre de décès")
+
+
+```
+```{r}
+ggplot(donnees_combinees, aes(x = education, fill = education)) + 
+  geom_bar() +
+  labs(title = "Répartition des décès par niveau d'éducation", x = "Niveau d'éducation", y = "Nombre de décès")
+
+```
+
+**Conclusion Generale**
+
+#*Taux de   nombre de décès par an : 
+
+  *Le graphique montre une tendance générale à l'augmentation du nombre de décès au fil du temps, avec quelques fluctuations d'une année à l'autre. L'année avec le nombre de décès le plus élevé semble être 2020, suivie de 2019 et 2018. L'année avec le nombre de décès le plus faible semble être 2006
+
+
+#*La Colonne "sexes" :
+  * On observe que le nombre d'hommes victimes est nettement plus élevé (454 524) avec pourcentage (85.88) que celui des femmes (74 709). avec pourcentage (14.12) 
+  * Cela représente une différence d'environ 83%.
+  
+#*La Colonne "mois" :
+
+  *Le mois de juillet (7) affiche le nombre le plus élevé d'incidents, avec environ 48 156 enregistrements, suivi de près par janvier (1) avec environ 45 414 incidents
+  
+  *le mois de février (2) enregistre le nombre le plus bas d'incidents, avec environ 35 000 cas.
+  
+#*La Colonne "intention" :
+
+  * La catégorie la plus fréquente est le "Suicide", avec un nombre d'incidents supérieur à 300 000, suivi par les "Homicides" avec un nombre équivalent à environ 200 000 incidents.
+  
+  *Les fusillades "accidentelles" totalisent 8 186 cas, tandis que les cas d'intention "Indéterminée" s'élèvent à 4 327. 
+  
+  * Il y a également 27 cas pour lesquels l'intention est "Inconnue"
+
+#*La Colonne "Race" :  
+ 
+   *Les victimes "blanches" ont le nombre d'incidents le plus élevé
+   
+   *Les victimes "noires" représentent le deuxième nombre le plus élevé
+    
+    
+   *Les victimes "asiatiques/insulaires du Pacifique" et "amérindiennes/indigènes de l'Alaska" ont un nombre d'incidents beaucoup plus faible (7382 et 4986 respectivement).
+    
+#*La Colonne "age" : 
+
+  * L'âge minimum des victimes est de 0 an.
+  * L'âge moyen est de 42,92 ans.
+  * Le troisième quartile (Q3) indique que 75% des victimes ont moins de 57 ans.
+  * Il y a 77 cas où l'âge de la victime n'est pas connu (NA).
+  * Le nombre de décès est relativement faible chez les personnes de moins de 20 ans.
+  *Le nombre de décès augmente rapidement chez les personnes de plus entre 20 et 28 
+  *  Le nombre de décès diminue régulièrement chez les personnes  entre 30 et 40
+  * Le nombre de décès est stable de 40 au 55 
+  * Le nombre de décès diminue régulièrement chez les personnes de plus de 60 ans.
+  
+#*La Colonne "police" :  
+  
+  * la majorite d'incidents se sont produits en l'absence de la police 
+  
+#*La Colonne "éducation" : 
+
+  * Un nombre significatif de victimes, dont la plupart ont un niveau d'éducation secondaire (diplôme d'études secondaires ou GED), constitue le groupe le plus important.
+  
+  *Le groupe de victimes avec un niveau d'éducation supérieur au baccalauréat (BA+) est le deuxième en importance.
+  
+#2/Analyse biivariée:
+
+**Par Stat**
+```{r}
+# Analyse des décès par année et intention
+cat("Analyse des décès par année et intention :\n")
+print(table(donnees_combinees$year, donnees_combinees$intent))
+cat("---------------------------------------------------------------------------------------\n")
+
+# Analyse des décès par race et intention
+cat("Analyse des décès par race et intention :\n")
+print(table(donnees_combinees$race, donnees_combinees$intent))
+cat("---------------------------------------------------------------------------------------\n")
+# Analyse des décès par sexe et intention
+cat("Analyse des décès par sexe et intention :\n")
+print(table(donnees_combinees$sex, donnees_combinees$intent))
+cat("---------------------------------------------------------------------------------------\n")
+
+# Analyse des décès par intention et implication policière
+cat("Analyse des décès par intention et implication policière :\n")
+print(table(donnees_combinees$intent, donnees_combinees$police))
+cat("---------------------------------------------------------------------------------------\n")
+
+# Analyse des décès par niveau d'éducation et intention
+cat("Analyse des décès par niveau d'éducation et intention :\n")
+print(table(donnees_combinees$education, donnees_combinees$intent))
+cat("---------------------------------------------------------------------------------------\n")
+
+```
+**Par Graphe**
+```{r}
+ggplot(donnees_combinees, aes(x = year, fill = intent)) + 
+  geom_bar(position = "stack") +
+  labs(title = "Répartition des décès par année et intention", x = "Année", y = "Nombre de décès")
+
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = race, fill = intent)) + 
+  geom_bar(position = "dodge") +
+  labs(title = "Répartition des décès par race et intention", x = "Race", y = "Nombre de décès")
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = intent, y = age, fill = intent)) + 
+  geom_violin() +
+  labs(title = "Répartition des décès par âge et intention", x = "Intention", y = "Âge")
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = sex, fill = intent)) + 
+  geom_bar(position = "stack") +
+  labs(title = "Répartition des décès par sexe et intention", x = "Sexe", y = "Nombre de décès")
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = intent, fill = factor(police))) + 
+  geom_bar(position = "dodge") +
+  labs(title = "Répartition des décès par intention et implication policière", x = "Intention", y = "Nombre de décès")
+```
+
+
+```{r}
+ggplot(donnees_combinees, aes(x = education, fill = intent)) + 
+  geom_bar(position = "dodge") +
+  labs(title = "Répartition des décès par niveau d'éducation et intention", x = "Niveau d'éducation", y = "Nombre de décès")
+```
+**Conclusion Générale**
+
+#Répartition des Décès par Année et Intention :
+  *  Le nombre de suicides augmente d'une année à l'autre, suivi par les homicides.
+  
+#Répartition des Décès par Race et Intention :
+  *  Les individus blancs ont une proportion plus élevée de suicides et homicides que les individus noirs.
+  
+#Répartition des Décès par Âge et Intention :
+  *  Les individus plus jeunes ont une proportion plus élevée de suicides et homicides. Les décès accidentels sont plus fréquents chez les jeunes et les plus âgés.
+  
+#Répartition des Décès par Sexe et Intention :
+  *  Les hommes ont une proportion plus élevée de homicides et accidents que les femmes. En revanche, les femmes ont une proportion plus élevée de suicides.
+  
+#Répartition des Décès par Intention et Implication Policière :
+  *  Les homicides sont plus susceptibles d'impliquer la police, tandis que les suicides sont moins susceptibles.
+  
+#Répartition des Décès par Niveau d'Éducation et Intention :
+  *  Les décès accidentels sont plus fréquents chez les personnes ayant un niveau d'études inférieur au baccalauréat, tandis que les suicides sont plus fréquents chez les personnes ayant un diplôme universitaire.
+
+
+
+
+
+
+#3/PCA
+
+```{r}
+# Convert categorical variables to factors
+donnees_combinees$intent <- as.factor(donnees_combinees$intent)
+donnees_combinees$sex <- as.factor(donnees_combinees$sex)
+donnees_combinees$race <- as.factor(donnees_combinees$race)
+donnees_combinees$education <- as.factor(donnees_combinees$education)
+
+# Perform one-hot encoding on categorical variables
+encoded_df <- model.matrix(~ intent + sex + race + education - 1, data = donnees_combinees)
+
+# Combine numeric variables with encoded categorical variables
+numeric_df <- donnees_combinees[, c("year", "month", "police", "age", "hispanic")]
+final_df <- cbind(numeric_df, encoded_df)
+
+# Convert final_df to numeric
+final_df <- sapply(final_df, as.numeric)
+
+# Perform PCA
+library(FactoMineR)
+result <- PCA(final_df, scale.unit = TRUE, graph = TRUE)
+
+
+```
+**Interprétation des Axes** 
+
+   *CP1 (Dim 1) : Cette composante (expliquant 15,39 % de la variance) pourrait capturer des facteurs liés au statut socio-économique et à la santé. En effet, des variables comme "niveau d'éducation inférieur au secondaire" et "niveau d'éducation secondaire/GED" ont des charges positives sur cet axe, indiquant possiblement une association négative avec le statut socio-économique et l'état de santé. D'un autre côté, "intentionSuicide" a une charge négative sur cet axe, ce qui pourrait être dû à une relation complexe entre les facteurs socio-économiques et les taux de suicide.
+
+   *CP2 (Dim 2) : Cette composante (expliquant 10,72 % de la variance) pourrait être liée à des facteurs comme l'origine ethnique et la cause du décès. "EthnieNoir" a une charge positive sur cet axe, tandis que "Ethnie Hispanique" a une charge négative. Cela pourrait suggérer des disparités raciales dans les taux de mortalité. De plus, "intentionHomicide" a une charge positive sur cet axe, indiquant possiblement une association plus élevée avec l'origine ethnique (représentée ici par "EthnieNoir").
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+
