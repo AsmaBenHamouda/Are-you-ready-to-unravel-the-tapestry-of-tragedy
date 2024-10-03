@@ -45,6 +45,12 @@ Distribution of Deaths by Intent and Police Involvement:
 Homicides are more likely to involve police, while suicides are less likely.
 ## Distribution of Deaths by Education Level and Intent:
 Accidental deaths are more common among those with less than a high school education, while suicides are more common among college graduates.
+##  Here are some exemples ❕❕:
+![image](https://github.com/user-attachments/assets/15e134b6-4ff0-4ac0-8590-0c225f6a74a1)
+![image](https://github.com/user-attachments/assets/eb5231ff-d344-4f63-b0e5-3bd48022af01)
+![image](https://github.com/user-attachments/assets/4886d68b-65d4-417d-9312-f4ae78625f2e)
+
+
 
 # V.📈 Visualizations and Insights
 This section includes detailed visualizations such as bar charts, line graphs, and heatmaps, providing a clearer understanding of the trends and patterns in gun-related deaths across various demographics.
